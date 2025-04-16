@@ -1,15 +1,12 @@
 import io.qameta.allure.*;
 import io.qameta.allure.junit4.DisplayName;
-import io.qameta.allure.restassured.AllureRestAssured;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
+import org.junit.After;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-
-import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
 @Epic("API Яндекс.Самоката")
@@ -20,6 +17,7 @@ public class OrderCreationTest extends BaseTest {
 
     private final OrderRequest order;
     private final String testCaseName;
+    private String trackNumber;
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> testData() {
@@ -52,15 +50,11 @@ public class OrderCreationTest extends BaseTest {
     @Description("Проверка что заказ создается с разными комбинациями цветов")
     @Story("Позитивные сценарии создания заказа")
     public void shouldCreateOrderWithDifferentColorOptions() {
-        given()
-                .filter(new AllureRestAssured())
-                .header("Content-type", "application/json")
-                .body(order)
-                .when()
-                .post("/api/v1/orders")
+        trackNumber = OrderSteps.createOrder(order)
                 .then()
                 .statusCode(201)
-                .body("track", notNullValue());
+                .body("track", notNullValue())
+                .extract().path("track").toString();
     }
 
     @Test
@@ -81,16 +75,12 @@ public class OrderCreationTest extends BaseTest {
                 Arrays.asList("BLACK")
         );
 
-        given()
-                .filter(new AllureRestAssured())
-                .header("Content-type", "application/json")
-                .body(testOrder)
-                .when()
-                .post("/api/v1/orders")
+        trackNumber = OrderSteps.createOrder(testOrder)
                 .then()
                 .body("track", notNullValue())
                 .body("track", instanceOf(Integer.class))
-                .body("track", greaterThan(0));
+                .body("track", greaterThan(0))
+                .extract().path("track").toString();
     }
 
     @Test
@@ -99,25 +89,19 @@ public class OrderCreationTest extends BaseTest {
     @Description("Попытка создать заказ без обязательных полей должна возвращать ошибку")
     @Story("Негативные сценарии создания заказа")
     public void shouldNotCreateOrderWithoutRequiredFields() {
-
         String invalidOrderJson = "{"
                 + "\"firstName\": null, "
                 + "\"lastName\": null, "
                 + "\"address\": null, "
                 + "\"metroStation\": null, "
                 + "\"phone\": null, "
-                + "\"rentTime\": 0, "  // для примитивного int указываем 0
+                + "\"rentTime\": 0, "
                 + "\"deliveryDate\": null, "
                 + "\"comment\": null, "
                 + "\"color\": null"
                 + "}";
 
-        given()
-                .filter(new AllureRestAssured())
-                .header("Content-type", "application/json")
-                .body(invalidOrderJson)
-                .when()
-                .post("/api/v1/orders")
+        OrderSteps.createOrder(invalidOrderJson)
                 .then()
                 .statusCode(400);
     }
@@ -140,13 +124,16 @@ public class OrderCreationTest extends BaseTest {
                 Arrays.asList("RED")  // Недопустимый цвет
         );
 
-        given()
-                .filter(new AllureRestAssured())
-                .header("Content-type", "application/json")
-                .body(invalidOrder)
-                .when()
-                .post("/api/v1/orders")
+        OrderSteps.createOrder(invalidOrder)
                 .then()
                 .statusCode(400);
+    }
+
+    @After
+    @Step("Отмена тестового заказа")
+    public void cancelTestOrder() {
+        if (trackNumber != null) {
+            OrderSteps.cancelOrder(trackNumber);
+        }
     }
 }

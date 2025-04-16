@@ -1,12 +1,15 @@
 import io.qameta.allure.*;
 import io.qameta.allure.junit4.DisplayName;
 import io.qameta.allure.restassured.AllureRestAssured;
+import io.restassured.response.Response;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
 import java.time.LocalDate;
 import java.util.Arrays;
-import static io.restassured.RestAssured.*;
+
+import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 @Epic("API Яндекс.Самоката")
@@ -14,7 +17,6 @@ import static org.hamcrest.Matchers.*;
 @DisplayName("Тесты для получения списка заказов")
 public class OrderListTest extends BaseTest {
     private String testCourierId;
-    private String testOrderId;
     private String testOrderTrack;
 
     @Before
@@ -40,7 +42,7 @@ public class OrderListTest extends BaseTest {
                     .path("id")
                     .toString();
 
-
+            // 2. Создаем тестовый заказ
             OrderRequest order = new OrderRequest(
                     "Иван",
                     "Иванов",
@@ -65,18 +67,6 @@ public class OrderListTest extends BaseTest {
                     .path("track")
                     .toString();
 
-
-            testOrderId = given()
-                    .filter(new AllureRestAssured())
-                    .queryParam("t", testOrderTrack)
-                    .when()
-                    .get("/api/v1/orders/track")
-                    .then()
-                    .statusCode(200)
-                    .extract()
-                    .path("order.id")
-                    .toString();
-
         } catch (Exception e) {
             throw new RuntimeException("Не удалось подготовить тестовые данные: " + e.getMessage(), e);
         }
@@ -86,7 +76,6 @@ public class OrderListTest extends BaseTest {
     @Severity(SeverityLevel.BLOCKER)
     @DisplayName("Получение списка всех заказов")
     @Description("Должен возвращаться список заказов с корректной структурой")
-    @Story("Позитивный сценарий получения заказов")
     public void shouldReturnListOfOrders() {
         given()
                 .filter(new AllureRestAssured())
@@ -109,7 +98,6 @@ public class OrderListTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     @DisplayName("Получение заказов конкретного курьера")
     @Description("Должны возвращаться только заказы указанного курьера")
-    @Story("Фильтрация заказов по курьеру")
     public void shouldReturnOrdersForSpecificCourier() {
         given()
                 .filter(new AllureRestAssured())
@@ -127,12 +115,11 @@ public class OrderListTest extends BaseTest {
     @Severity(SeverityLevel.NORMAL)
     @DisplayName("Фильтрация заказов по станции метро")
     @Description("Должны возвращаться только заказы для указанных станций метро")
-    @Story("Фильтрация заказов по метро")
     public void shouldFilterOrdersByMetroStation() {
         given()
                 .filter(new AllureRestAssured())
                 .header("Content-type", "application/json")
-                .queryParam("nearestStation", "[\"1\"]") // Черкизовская
+                .queryParam("nearestStation", "[\"1\"]")
                 .when()
                 .get("/api/v1/orders")
                 .then()
@@ -145,7 +132,6 @@ public class OrderListTest extends BaseTest {
     @Severity(SeverityLevel.NORMAL)
     @DisplayName("Пагинация списка заказов")
     @Description("Должна работать пагинация при получении списка заказов")
-    @Story("Пагинация заказов")
     public void shouldPaginateOrderList() {
         int limit = 2;
         given()
@@ -166,7 +152,6 @@ public class OrderListTest extends BaseTest {
     @Severity(SeverityLevel.CRITICAL)
     @DisplayName("Запрос заказов несуществующего курьера")
     @Description("Должна возвращаться ошибка 404 для несуществующего курьера")
-    @Story("Негативный сценарий получения заказов")
     public void shouldReturn404ForNonExistentCourier() {
         given()
                 .filter(new AllureRestAssured())
@@ -183,7 +168,7 @@ public class OrderListTest extends BaseTest {
     @Step("Очистка тестовых данных")
     public void cleanTestData() {
         try {
-
+            // Отменяем заказ
             if (testOrderTrack != null) {
                 given()
                         .filter(new AllureRestAssured())
@@ -194,7 +179,7 @@ public class OrderListTest extends BaseTest {
                         .statusCode(200);
             }
 
-
+            // Удаляем курьера
             if (testCourierId != null) {
                 given()
                         .filter(new AllureRestAssured())
